@@ -1,0 +1,42 @@
+# Description
+# ===========
+# This playbook installs VMSS Extension that will install Apache.
+# This sample requires Ansible 2.8 (or azure_preview_modules)
+
+---
+- hosts: localhost
+  # roles:
+  #   - Azure.azure_preview_modules
+  vars:
+    resource_group: rg-eus-mscafe-ansible
+    avset_name: avset-eus-web
+    web01_vm_name: ubuntu-web01
+    web02_vm_name: ubuntu-web02
+    vnet_name: vnet-eus-ansible
+    subnet_name: sn-eus-internal
+    location: eastus
+    web01_vm_ext_name: web01vmextension
+    web02_vm_ext_name: web02vmextension
+  tasks:
+    - name: Create Web-01 VM Extension - HTTPD
+      azure_rm_virtualmachine_extension:
+        name: "{{ web01_vm_ext_name }}"
+        location: "{{ location }}"
+        resource_group: "{{ resource_group }}"
+        virtual_machine_name: "{{ web01_vm_name }}" 
+        publisher: Microsoft.Azure.Extensions
+        virtual_machine_extension_type: CustomScript
+        type_handler_version: 2.0
+        settings: {"commandToExecute": "sudo apt-get -y install apache2"}
+        auto_upgrade_minor_version: true
+    - name: Create Web-02 VM Extension - HTTPD
+      azure_rm_virtualmachine_extension:
+        name: "{{ web02_vm_ext_name }}"
+        location: "{{ location }}"
+        resource_group: "{{ resource_group }}"
+        virtual_machine_name: "{{ web02_vm_name }}" 
+        publisher: Microsoft.Azure.Extensions
+        virtual_machine_extension_type: CustomScript
+        type_handler_version: 2.0
+        settings: {"commandToExecute": "sudo apt-get -y install apache2"}
+        auto_upgrade_minor_version: true
