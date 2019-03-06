@@ -10,12 +10,12 @@
   vars:
     resource_group: rg-eus-mscafe-ansible
     avset_name: avset-eus-web
-    vm_name: ubuntu-web01
+    vm_name: web01
     vnet_name: vnet-eus-ansible
     subnet_name: sn-eus-internal
-    pip_name: ubuntu-web01-pip
-    nic_name: ubuntu-web01-nic
-    nsg_name: ubuntu-web01-nsg
+    pip_name: web01-pip
+    nic_name: web01-nic
+    nsg_name: web01-nsg
     elb_name: elb-eus-web
     elb_pip_name: elb-eus-web-pip
     location: eastus
