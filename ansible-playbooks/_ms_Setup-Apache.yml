@@ -10,8 +10,8 @@
   vars:
     resource_group: rg-eus-mscafe-ansible
     avset_name: avset-eus-web
-    web01_vm_name: ubuntu-web01
-    web02_vm_name: ubuntu-web02
+    web01_vm_name: web01
+    web02_vm_name: web02
     vnet_name: vnet-eus-ansible
     subnet_name: sn-eus-internal
     location: eastus
