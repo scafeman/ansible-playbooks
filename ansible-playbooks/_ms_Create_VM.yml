@@ -1,0 +1,130 @@
+# Description
+# ===========
+# This playbook create an Azure VM with public IP, and subnet in another resource group.
+# This Script will create two resource group, defined by variables resource_group and resource_group. 
+# Then it creates VM in resource_group and virtual network with defined subnets,nsg rules in resource_group.
+
+- name: Create Azure VM
+  hosts: localhost
+  connection: local
+  vars:
+    resource_group: rg-eus-mscafe-ansible
+    avset_name: avset-eus-web
+    vm_name: ubuntu-web01
+    vnet_name: vnet-eus-ansible
+    subnet_name: sn-eus-internal
+    pip_name: ubuntu-web01-pip
+    nic_name: ubuntu-web01-nic
+    nsg_name: ubuntu-web01-nsg
+    elb_name: elb-eus-web
+    elb_pip_name: elb-eus-web-pip
+    location: eastus
+#  roles:
+#    - Azure.azure_preview_modules
+  tasks:
+  - name: Create a resource group
+    azure_rm_resourcegroup:
+        name: "{{ resource_group }}"
+        location: "{{ location }}"
+  - name: Create virtual network
+    azure_rm_virtualnetwork:
+      resource_group: "{{ resource_group }}"
+      name: "{{ vnet_name }}"
+      address_prefixes: "10.10.0.0/22"
+  - name: Create subnet
+    azure_rm_subnet:
+      resource_group: "{{ resource_group }}"
+      name: "{{ subnet_name }}"
+      address_prefix: "10.10.0.0/24"
+      virtual_network: "{{ vnet_name }}"
+  - name: Create VM public IP address
+    azure_rm_publicipaddress:
+      resource_group: "{{ resource_group }}"
+      allocation_method: Static
+      name: "{{ pip_name }}"
+  - name: Create ELB public IP address
+    azure_rm_publicipaddress:
+      resource_group: "{{ resource_group }}"
+      allocation_method: Static
+      name: "{{ elb_pip_name }}"
+  - name: create load balancer
+    azure_rm_loadbalancer:
+      resource_group: "{{ resource_group }}"
+      name: "{{ elb_name }}"
+      frontend_ip_configurations:
+        - name: frontendipconf0
+          public_ip_address: "{{ elb_pip_name }}"
+      backend_address_pools:
+        - name: backendaddrpool0
+      probes:
+        - name: prob0
+          port: 80
+      inbound_nat_pools:
+        - name: inboundnatpool0
+          frontend_ip_configuration_name: frontendipconf0
+          protocol: Tcp
+          frontend_port_range_start: 80
+          frontend_port_range_end: 81
+          backend_port: 8080
+      load_balancing_rules:
+        - name: lbrbalancingrule0
+          frontend_ip_configuration: frontendipconf0
+          backend_address_pool: backendaddrpool0
+          frontend_port: 80
+          backend_port: 80
+          probe: prob0
+  - name: Create Network Security Group that allows SSH
+    azure_rm_securitygroup:
+      resource_group: "{{ resource_group }}"
+      name: "{{ nsg_name }}"
+      rules:
+        - name: SSH
+          protocol: Tcp
+          destination_port_range: 22
+          access: Allow
+          priority: 1001
+          direction: Inbound
+  - name: Create virtual network interface card
+    azure_rm_networkinterface:
+      resource_group: "{{ resource_group }}"
+      name: "{{ nic_name }}"
+      virtual_network: "{{ vnet_name }}"
+      subnet: "{{ subnet_name }}"
+      security_group: "{{ nsg_name }}"
+      ip_configurations:
+        - name: ipconfig1
+          public_ip_address_name: "{{ pip_name }}"
+          public_ip_allocation_method: Static
+          primary: True
+  - name: Create an availability set for a VM
+    azure_rm_availabilityset:
+      name: "{{ avset_name }}"
+      resource_group: "{{ resource_group }}"
+      platform_update_domain_count: 5
+      platform_fault_domain_count: 2
+      sku: Aligned
+  - name: Create VM
+    azure_rm_virtualmachine:
+      resource_group: "{{ resource_group }}"
+      name: "{{ vm_name }}"
+      vm_size: Standard_B2ms
+      availability_set: "{{ avset_name }}"
+      managed_disk_type: Premium_LRS
+      admin_username: mscafe
+      ssh_password_enabled: false
+      ssh_public_keys: 
+        - path: /home/mscafe/.ssh/authorized_keys
+          key_data: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDGwDVK7dkRlorlSV/FF758B9dtPp029InG2aaOpQqrUDzvrW1Y0Ms6EB+pWIn4HluMW8drKgKal/hrYntemt1R1CERLdahkqhSj9B4pq4hMLaOPznI+Gj0FFnvXhErGBKg9abhwixk4q/I1P18bPNEbBY230a4KfPtgTKiRypR4jX1R1IDUW/fYN2ySjBRBMvnjLUP8ZpmgLm2rfzmw1NQx1H1FJjKMnCqHvxT9As66WPYeVRVGfyZtonj6fqsaJRxvqAxay9h3ij/zyEJ8hbScpvsSqimEORSL9W5Jvcdc94RMokVms+PMSSzH5rWCu5T3V+1Qvk9hvaiJnKRMqVt matthew_scafe@cc-d3945f65-5c45d6b85c-f4kqw
+      virtual_network_resource_group: "{{ resource_group }}"
+      virtual_network_name: "{{ vnet_name }}"
+      subnet_name: "{{ subnet_name }}"
+      network_interfaces: "{{ nic_name }}"
+      image:
+        offer: UbuntuServer
+        publisher: Canonical
+        sku: 16.04-LTS
+        version: latest
+      data_disks:
+        - lun: 0
+          disk_size_gb: 64
+          managed_disk_type: Premium_LRS
